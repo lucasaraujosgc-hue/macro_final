@@ -117,17 +117,20 @@ app.post('/api/certificates/verify', async (req, res) => {
   try {
     const { base64Data, password } = req.body;
     
-    // Quick mock validation for P12 files since we can't easily parse complex p12 without node-forge
-    // To make it simple for this prototype, if it has data and a password, we will just return success.
-    // If you want actual node-forge parsing:
-    const forge = await import('node-forge');
     try {
-      const p12Der = forge.util.decode64(base64Data);
-      const p12Asn1 = forge.asn1.fromDer(p12Der);
-      forge.pkcs12.pkcs12FromAsn1(p12Asn1, password || '');
+      const crypto = await import('crypto');
+      const pfxBuffer = Buffer.from(base64Data, 'base64');
+      
+      // Using native crypto to verify if the PFX and password are valid
+      crypto.createSecureContext({
+        pfx: pfxBuffer,
+        passphrase: password || ''
+      });
+      
       res.json({ success: true, message: 'Certificado e senha válidos!' });
     } catch (e: any) {
-      res.status(400).json({ error: 'Senha incorreta ou certificado inválido.' });
+      console.error('Erro na validação do certificado:', e.message);
+      res.status(400).json({ error: 'Senha incorreta ou certificado inválido. Verifique se o arquivo PFX/P12 e a senha estão corretos.' });
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
