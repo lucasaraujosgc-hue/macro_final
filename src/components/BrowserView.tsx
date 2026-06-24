@@ -260,22 +260,7 @@ export default function BrowserView({ onRecordStep, recording, setRecording }: P
           )}
           
           <div className="relative inline-block max-w-full shadow-2xl rounded-lg overflow-hidden bg-white border border-gray-300 ring-1 ring-gray-900/5">
-            {screenshot && screenshot.length < 500 ? (
-              <div className="w-[1280px] h-[800px] max-w-full bg-gray-900 flex flex-col items-center justify-center text-white text-sm tracking-wide p-12 text-center">
-                <AlertCircle className="w-16 h-16 text-yellow-500 mb-6" />
-                <h2 className="text-2xl font-bold mb-4">Modo Simulado Ativado (Preview AI Studio)</h2>
-                <p className="text-gray-300 max-w-2xl text-lg leading-relaxed mb-6">
-                  O ambiente do AI Studio não suporta a execução de navegadores headless (Chromium) devido a limitações do sistema operacional base (falta do X11, libnss3, etc).
-                </p>
-                <p className="text-gray-300 max-w-2xl text-lg leading-relaxed mb-8">
-                  Para utilizar a automação do Gov Automator com navegadores reais, <strong>exporte o projeto</strong> (clique em Export no topo) e execute localmente na sua máquina usando o arquivo Dockerfile fornecido.
-                </p>
-                <div className="bg-gray-800 p-4 rounded-lg font-mono text-left w-full max-w-xl text-yellow-400">
-                  <div className="text-gray-400 mb-2"># Após exportar o projeto, execute localmente:</div>
-                  docker-compose up --build
-                </div>
-              </div>
-            ) : screenshot ? (
+            {screenshot ? (
               <img 
                 src={screenshot} 
                 alt="Browser Viewport" 

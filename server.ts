@@ -9,12 +9,9 @@ const PORT = 3000;
 
 let browser: Browser | null = null;
 let page: Page | null = null;
-let mockMode = false;
 
 // Helper para iniciar o Puppeteer com os argumentos corretos para Docker e ambientes headless
 async function getPage() {
-  if (mockMode) return null; // Mock mode ativo
-
   if (!browser) {
     try {
       browser = await puppeteer.launch({
@@ -29,9 +26,8 @@ async function getPage() {
         ]
       });
     } catch (err: any) {
-      console.error("Erro ao iniciar Puppeteer, ativando MOCK MODE:", err.message);
-      mockMode = true;
-      return null;
+      console.error("Erro ao iniciar Puppeteer:", err.message);
+      throw new Error("Falha ao iniciar navegador: " + err.message);
     }
   }
   if (!page && browser) {
@@ -43,21 +39,11 @@ async function getPage() {
   return page;
 }
 
-// Gera um screenshot falso simples usando um pixel base64 expandido pelo CSS ou texto
-const mockScreenshotBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // 1x1 pixel preto
-
 app.post('/api/browser/goto', async (req, res) => {
   try {
     const { url } = req.body;
     const p = await getPage();
-    if (mockMode || !p) {
-      // Retorna resposta mockada
-      return res.json({ 
-        screenshot: `data:image/png;base64,${mockScreenshotBase64}`, 
-        url: url, 
-        title: 'Mock Mode - Export project to use real Chrome' 
-      });
-    }
+    if (!p) throw new Error("Página não encontrada");
     await p.goto(url, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
     const screenshot = await p.screenshot({ encoding: 'base64' });
     const currentUrl = p.url();
@@ -72,13 +58,7 @@ app.post('/api/browser/click', async (req, res) => {
   try {
     const { x, y } = req.body;
     const p = await getPage();
-    if (mockMode || !p) {
-      return res.json({ 
-        screenshot: `data:image/png;base64,${mockScreenshotBase64}`, 
-        url: 'https://mock-mode.local', 
-        title: 'Mock Mode' 
-      });
-    }
+    if (!p) throw new Error("Página não encontrada");
     await p.mouse.click(x, y);
     // Aguarda um momento para a página reagir ao clique (navegação, modais, etc)
     await new Promise(r => setTimeout(r, 1500));
@@ -95,12 +75,7 @@ app.post('/api/browser/type', async (req, res) => {
   try {
     const { text, key } = req.body;
     const p = await getPage();
-    if (mockMode || !p) {
-      return res.json({ 
-        screenshot: `data:image/png;base64,${mockScreenshotBase64}`, 
-        url: 'https://mock-mode.local' 
-      });
-    }
+    if (!p) throw new Error("Página não encontrada");
     if (text) {
       await p.keyboard.type(text);
     }
@@ -121,12 +96,7 @@ app.post('/api/browser/scroll', async (req, res) => {
   try {
     const { deltaY } = req.body;
     const p = await getPage();
-    if (mockMode || !p) {
-      return res.json({ 
-        screenshot: `data:image/png;base64,${mockScreenshotBase64}`, 
-        url: 'https://mock-mode.local' 
-      });
-    }
+    if (!p) throw new Error("Página não encontrada");
     await p.evaluate((y) => window.scrollBy(0, y), deltaY);
     await new Promise(r => setTimeout(r, 300));
     const screenshot = await p.screenshot({ encoding: 'base64' });
@@ -142,7 +112,6 @@ app.post('/api/browser/close', async (req, res) => {
     browser = null;
     page = null;
   }
-  mockMode = false;
   res.json({ success: true });
 });
 

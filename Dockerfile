@@ -1,29 +1,27 @@
-# Usa uma imagem oficial do Node com as dependências completas do Chromium para o Puppeteer
-FROM ghcr.io/puppeteer/puppeteer:latest
+FROM node:20-slim
 
-# Trocar para o usuário root para criar pastas e instalar dependências extras se necessário
-USER root
+# Instala as dependências necessárias do Chrome no Debian
+RUN apt-get update \
+    && apt-get install -y wget gnupg \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
+    && sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 \
+      --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
-# Copiar os arquivos de dependência
 COPY package*.json ./
-
-# Instalar as dependências do projeto
 RUN npm install
 
-# Copiar todo o código fonte
 COPY . .
-
-# Construir a aplicação (Frontend React e Backend Node)
 RUN npm run build
 
-# Definir as variáveis de ambiente necessárias para o Puppeteer no Docker
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+# O Puppeteer vai usar a instalação do Chrome global do sistema que instalamos acima
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
-# Expor a porta usada pela aplicação
 EXPOSE 3000
 
-# Executar a aplicação
 CMD ["npm", "start"]
