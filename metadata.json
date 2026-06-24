@@ -1,0 +1,6 @@
+{
+  "name": "Gov Automator Browser",
+  "description": "A simulated web browser powered by Puppeteer to automate tasks on government websites.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
