@@ -1,5 +1,5 @@
 # Usa uma imagem oficial do Node com as dependências completas do Chromium para o Puppeteer
-FROM ghcr.io/puppeteer/puppeteer:21.9.0-node20
+FROM ghcr.io/puppeteer/puppeteer:latest
 
 # Trocar para o usuário root para criar pastas e instalar dependências extras se necessário
 USER root
