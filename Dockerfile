@@ -12,6 +12,11 @@ RUN apt-get update \
 
 WORKDIR /usr/src/app
 
+# Define variáveis de ambiente para que o Puppeteer não baixe sua própria versão do Chrome durante o npm install
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+
 COPY package*.json ./
 RUN npm install
 
