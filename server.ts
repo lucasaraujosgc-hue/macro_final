@@ -2,10 +2,15 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import multer from 'multer';
+import forge from 'node-forge';
+import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
 app.use(express.json());
 const PORT = 3000;
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 let browser: Browser | null = null;
 let page: Page | null = null;
@@ -115,27 +120,83 @@ app.post('/api/browser/close', async (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/certificates/verify', async (req, res) => {
+app.post("/api/certificates/upload", upload.single("pfx"), async (req, res) => {
   try {
-    const { base64Data, password } = req.body;
-    
-    try {
-      const crypto = await import('crypto');
-      const pfxBuffer = Buffer.from(base64Data, 'base64');
-      
-      // Using native crypto to verify if the PFX and password are valid
-      crypto.createSecureContext({
-        pfx: pfxBuffer,
-        passphrase: password || ''
-      });
-      
-      res.json({ success: true, message: 'Certificado e senha válidos!' });
-    } catch (e: any) {
-      console.error('Erro na validação do certificado:', e.message);
-      res.status(400).json({ error: 'Senha incorreta ou certificado inválido. Verifique se o arquivo PFX/P12 e a senha estão corretos.' });
+    const file = req.file;
+    const password = req.body.password;
+
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    if (!password) return res.status(400).json({ error: "Password is required" });
+
+    // Parse PFX
+    const p12Asn1 = forge.asn1.fromDer(file.buffer.toString("binary"));
+    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+
+    let validFrom = new Date();
+    let validTo = new Date();
+    let titular = "Unknown";
+    let serial = "Unknown";
+    let issuer = "Unknown";
+    let cpfCnpj = "N/A";
+
+    const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
+    const certBag = bags[forge.pki.oids.certBag]?.[0];
+
+    if (certBag && certBag.cert) {
+      const cert = certBag.cert;
+      validFrom = cert.validity.notBefore;
+      validTo = cert.validity.notAfter;
+      serial = cert.serialNumber;
+
+      const subject = cert.subject.attributes.reduce((acc: Record<string, string>, attr: any) => {
+        acc[attr.shortName || attr.name] = attr.value;
+        return acc;
+      }, {});
+
+      const issuerAttr = cert.issuer.attributes.reduce(
+        (acc: Record<string, string>, attr: any) => {
+          acc[attr.shortName || attr.name] = attr.value;
+          return acc;
+        },
+        {}
+      );
+
+      titular = subject["CN"] || "Unknown";
+      issuer = issuerAttr["CN"] || issuerAttr["O"] || "Unknown";
+
+      // Extract CPF/CNPJ from BR certificate CN (format: "NAME:CPF_OR_CNPJ")
+      if (titular.includes(":")) {
+        const parts = titular.split(":");
+        const raw = parts[parts.length - 1].replace(/\D/g, "");
+        cpfCnpj = raw;
+      }
     }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+
+    const type = cpfCnpj.replace(/\D/g, "").length > 11 ? "PJ" : "PF";
+
+    const certificate = {
+      id: uuidv4(),
+      name: titular, // Use titular as name for the existing UI
+      filename: file.originalname,
+      passwordEncrypted: Buffer.from(password).toString("base64"),
+      titular,
+      cpfCnpj,
+      serial,
+      issuer,
+      validFrom: validFrom.toISOString(),
+      validTo: validTo.toISOString(),
+      type: type as "PF" | "PJ",
+      valid: true,
+      uploadedAt: new Date().toISOString()
+    };
+
+    // Return the parsed certificate to the frontend so it can save it in state
+    res.json({ success: true, message: 'Certificado e senha válidos!', certificate });
+  } catch (error: any) {
+    console.error("[Certificate Upload Error]", error);
+    res.status(400).json({
+      error: "Certificado inválido ou senha incorreta. " + error.message,
+    });
   }
 });
 

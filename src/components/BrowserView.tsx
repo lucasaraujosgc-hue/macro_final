@@ -264,13 +264,22 @@ export default function BrowserView({ onRecordStep, recording, setRecording }: P
               <img 
                 src={screenshot} 
                 alt="Browser Viewport" 
-                className="max-w-full h-auto cursor-crosshair bg-white"
+                className={`max-w-full h-auto cursor-crosshair bg-white transition-opacity ${loading ? 'opacity-90' : 'opacity-100'}`}
                 style={{ width: '1280px', maxHeight: '800px', objectFit: 'contain' }}
                 onClick={handleClick}
               />
             ) : (
               <div className="w-[1280px] h-[800px] max-w-full bg-gray-50 flex items-center justify-center text-gray-400 text-sm font-mono tracking-widest uppercase">
                 {loading ? '[ INICIANDO ENGINE... ]' : '[ NENHUM SINAL DE VÍDEO ]'}
+              </div>
+            )}
+            
+            {loading && screenshot && (
+              <div className="absolute top-4 right-4 pointer-events-none z-10 flex items-center justify-center">
+                <div className="bg-blue-600 text-white rounded-full px-3 py-1.5 shadow-lg flex items-center space-x-2">
+                  <RotateCw className="w-3 h-3 animate-spin" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Processando...</span>
+                </div>
               </div>
             )}
           </div>

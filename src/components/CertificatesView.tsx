@@ -34,37 +34,29 @@ export default function CertificatesView({ certificates, setCertificates }: Prop
     setMessage(null);
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64Data = (event.target?.result as string).split(',')[1];
-        
-        const res = await fetch('/api/certificates/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base64Data, password })
-        });
-        
-        const data = await res.json();
-        
-        if (data.error) {
-          setMessage({ text: data.error, type: 'error' });
-        } else {
-          setMessage({ text: data.message || 'Certificado validado com sucesso!', type: 'success' });
-          const newCert: Certificate = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: file.name,
-            uploadedAt: new Date().toISOString(),
-            valid: true
-          };
-          setCertificates([...certificates, newCert]);
-          setFile(null);
-          setPassword('');
-        }
-        setLoading(false);
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append('pfx', file);
+      formData.append('password', password);
+
+      const res = await fetch('/api/certificates/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setMessage({ text: data.error || 'Erro ao validar certificado.', type: 'error' });
+      } else {
+        setMessage({ text: data.message || 'Certificado validado com sucesso!', type: 'success' });
+        // Assume data.certificate is the parsed certificate data from backend
+        setCertificates([...certificates, data.certificate]);
+        setFile(null);
+        setPassword('');
+      }
     } catch (err: any) {
       setMessage({ text: 'Erro ao ler arquivo: ' + err.message, type: 'error' });
+    } finally {
       setLoading(false);
     }
   };
